@@ -16,7 +16,7 @@ def scrape_google_news():
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
         # Example: Scraping headlines
-        headlines = soup.find_all('h4', {'class': 'gPFEn'})
+        headlines = soup.find_all('h4', {'class': ['gPFEn', 'JtKRv', 'JtKRv vDXQhc']})
         news_headlines = [headline.get_text() for headline in headlines]
         print("Headlines:")
         print(news_headlines)
@@ -24,7 +24,7 @@ def scrape_google_news():
         print("Failed to fetch data from Google News")
 
 # Define the number of threads (pages) to scrape
-num_threads = 5
+num_threads = 3
 
 # Create and start threads
 threads = []
