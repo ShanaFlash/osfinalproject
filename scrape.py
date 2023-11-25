@@ -1,55 +1,54 @@
-import multiprocessing
 from bs4 import BeautifulSoup
-from queue import Queue, Empty
-from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import urljoin, urlparse
 import threading
 import requests
 
-def scrape_products(page_num):
-    # Example HTML content (replace this with your actual HTML content)
-    url = f'https://www.walmart.com/browse/electronics/apple-airpods/3944_133251_1095191_1231498_2452446??page={page_num}'
+visited_urls = set()
+lock = threading.Lock()
+urls_to_crawl = []
 
+def fetch_url(url):
+    global visited_urls, urls_to_crawl
     headers = {
-        'User-Agent': 'Your User Agent String'  # Update with your User Agent
+        'User-Agent': 'Your User Agent String'
     }
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            # Example: Scraping products
+            products = soup.find_all('span', {'data-automation-id': 'product-title'})
+            product_texts = [product.get_text() for product in products]
+            print(f"Scraped URL: {url}")
+            print("Page Products:")
+            print(product_texts)
+            
+            # Extract new URLs dynamically and add them to urls_to_crawl
+            new_urls = [link['href'] for link in soup.find_all('a', href=True)]
+            for new_url in new_urls:
+                if new_url not in visited_urls and new_url not in urls_to_crawl:
+                    urls_to_crawl.append(new_url)
+            
+            # Add the URL to the visited set
+            with lock:
+                visited_urls.add(url)
+        else:
+            print(f"Failed to fetch data from URL: {url}")
+    except Exception as e:
+        print(f"Error fetching URL {url}: {e}")
 
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        # Example: Scraping quotes
-        products = soup.find_all('span', {'data-automation-id': 'product-title'})  # Adjust class names as per the website
-        product_texts = [product.get_text() for product in products]
-        print(f"Page {page_num} Products:")
-        print(product_texts)
-    else:
-        print(f"Failed to fetch data from page {page_num}")
+def crawl(start_url):
+    global urls_to_crawl
+    urls_to_crawl.append(start_url)
+    
+    while urls_to_crawl:
+        current_url = urls_to_crawl.pop(0)
+        if current_url not in visited_urls:
+            fetch_url(current_url)
 
-# Extracting the dollar sign, price, and cents
-# dollar_sign = soup.find('span', {'class': 'f6 f5-l'}).get_text()
-# price = soup.find('span', {'class': 'f2'}).get_text()
-# cents = soup.find_all('span', {'class': 'f6 f5-l'})[1].get_text()
+# Asking for user input and storing it in a variable
+start_url = input("Enter the url to start from: ")
 
-# # Concatenating the price, cents, and dollar sign
-# full_price = f"{dollar_sign}{price}{cents}"
-
-# Extracting the product title
-# title_element = soup.find('span', {'data-automation-id': 'product-title'})
-# title = title_element.get_text()
-
-# print("Full Price:", full_price)
-
-# Create and start threads for each page
-num_pages = 2
-threads = []
-for page in range(1, num_pages + 1):
-    thread = threading.Thread(target=scrape_products, args=(page,))
-    threads.append(thread)
-    thread.start()
-
-# Wait for all threads to complete
-for thread in threads:
-    thread.join()
-
+# start_url = 'https://www.walmart.com/browse/electronics/apple-airpods/3944_133251_1095191_1231498_2452446??page=1'
+crawl(start_url)
 print("All pages scraped.")
-# print("Title:", title)
+
