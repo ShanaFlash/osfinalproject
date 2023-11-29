@@ -5,6 +5,7 @@ import csv
 import sys
 import os
 
+
 visited_urls = set()
 lock = threading.Lock()
 urls_to_crawl = []
