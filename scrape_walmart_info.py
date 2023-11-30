@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import threading
 import requests
+import csv
 
 visited_urls = set()
 lock = threading.Lock()
@@ -18,10 +19,10 @@ def fetch_url(url):
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
-            # Example: Scraping products and prices
+            # Scraping products and prices
             products = soup.find_all('span', {'data-automation-id': 'product-title'})
             product_texts = [product.get_text() for product in products]
-            print(product_texts)
+            
             prices = soup.find_all('div', {'data-automation-id': 'product-price'})
             price_texts = []
             for price in prices:
@@ -31,12 +32,19 @@ def fetch_url(url):
                 price_text = f"{dollar_sign}{dollars}.{cents}"
                 price_texts.append(price_text)
 
+            # Write data to CSV file
+            with open('product_info.csv', mode='a', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                for i in range(len(product_texts)):
+                    writer.writerow([product_texts[i], price_texts[i], url])
+
             print(f"Scraped URL: {url}")
             print("Page Products:")
             for i in range(len(product_texts)):
                 print(f"Product: {product_texts[i]}")
                 print(f"Price: {price_texts[i]}")
             print('\n')
+            
             # Add the URL to the visited set
             with lock:
                 visited_urls.add(url)
@@ -65,10 +73,10 @@ def generate_urls(base_url):
         urls_to_crawl.append(url)
 
 # Asking for user input and storing it in a variable
-# start_url = input("Enter the base url to start from: ")
+base_url = input("Enter the base url to start from: ")
 
 # base_url = 'https://www.walmart.com/browse/electronics/shop-all-headphones-by-type/3944_133251_1095191_1230614_4480?page='
-base_url = 'https://www.walmart.com/browse/home/shop-microwaves/4044_90548_90546_132950_8874548'
+# base_url = 'https://www.walmart.com/browse/home/shop-microwaves/4044_90548_90546_132950_8874548'
 generate_urls(base_url)
 
 threads = []
